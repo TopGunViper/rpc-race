@@ -1,0 +1,21 @@
+
+比赛总共分为两道题:"RPC"与"MOM”，两题都需完成。我们会对"RPC"成绩（qps）进行排名，排名前100位的队伍有资格进入MOM的比赛环节，若未进入前100名直接淘汰，最终名次由"MOM"成绩决定 。题目的详细内容请见以下链接，编码统一用utf-8。请严格按照题目要求来实现，如果发现作弊，举办方有权取消参赛者资格，赛题的最终解释权归阿里巴巴集团所有。
+
+RPC题目 http://code.taobao.org/p/race/wiki/index/rpc/
+RPC的提示 http://code.taobao.org/p/race/wiki/index/rpctips/
+
+MOM题目 http://code.taobao.org/p/race/wiki/index/mom/
+MOM的提示 http://code.taobao.org/p/race/wiki/index/momtips/
+最终目录结构:
+
+- trunk
+       - rpc
+            - build.sh
+            - Your code
+            - target/lib/*.jar (运行build.sh之后，把所有的依赖都打到这个目录下)
+       - mom
+            - build.sh
+            - broker.sh
+            - Your code 
+            - target/lib/*.jar 
+
