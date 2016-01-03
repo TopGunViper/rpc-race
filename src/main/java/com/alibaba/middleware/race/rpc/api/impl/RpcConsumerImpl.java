@@ -1,267 +1,166 @@
 package com.alibaba.middleware.race.rpc.api.impl;
 
-import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
+
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
-import java.util.Iterator;
+import java.net.Socket;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
 import com.alibaba.middleware.race.rpc.aop.ConsumerHook;
-import com.alibaba.middleware.race.rpc.api.RpcClient;
-import com.alibaba.middleware.race.rpc.api.RpcConsumer;
+import com.alibaba.middleware.race.rpc.api.*;
+import com.alibaba.middleware.race.rpc.async.ResponseCallbackListener;
 import com.alibaba.middleware.race.rpc.async.ResponseFuture;
 import com.alibaba.middleware.race.rpc.context.RpcContext;
-import com.alibaba.middleware.race.rpc.service.RpcRequest;
-import com.alibaba.middleware.race.rpc.service.RpcResponse;
-import com.alibaba.middleware.race.rpc.util.SerializableUtil;
+import com.alibaba.middleware.race.rpc.model.RpcRequest;
+import com.alibaba.middleware.race.rpc.model.RpcResponse;
 
-public class RpcConsumerImpl extends RpcConsumer  {
 
-	private final int DEFAULT_PORT = 8888;
 
-	private final String DEFAULT_HOST = "127.0.0.1";
-
-	private final String REMOTE_HOST = "114.215.130.4";
-
-	private Class<?> interfaceClass;
-	private String version;
-	private int timeout;
+public class RpcConsumerImpl extends RpcConsumer
+{
+	private static ThreadLocal<Set<String>> asynLocalSet = new ThreadLocal<Set<String>>(){
+		@Override
+		public Set<String> initialValue()
+		{
+			return new HashSet<String>();
+		}
+	};
+	private static int PORT = 8888;
+	public static ConsumerHook consumerHook;
+	public static int clientTimeout;
+	private Class<?> interfaceClazz;
+	private static String host;
+	private ChannelFuture f;
+	//private ConsumerHandlerPool consumerHandlerPool;
 	
-	private Object listener;
-	private ConsumerHook hook;
-	
-	RpcClient client;
-	
-	
-	public RpcConsumerImpl(){
-		
-	}
-	private void doConnect() throws IOException{
-		boolean connected = sc.connect(new InetSocketAddress(DEFAULT_HOST,DEFAULT_PORT));
-		InetSocketAddress address = (InetSocketAddress) sc.getRemoteAddress();
-		System.out.println("connected:" + connected + ",host:" + address.getHostName() + ",port:" + address.getPort());
-		//如果连接成功，则注册到多路复用器selector上，发送请求信息，读应答
-		if(connected){
-			sc.register(selector, SelectionKey.OP_READ);
-		}else{
-			sc.register(selector, SelectionKey.OP_CONNECT);
-		}
-	}
-	public Object instance() {
-		// TODO Auto-generated method stub
-		if(interfaceClass == null)
-			throw new IllegalArgumentException("interface class = null");
-		if(!interfaceClass.isInterface())
-			throw new IllegalArgumentException("The " + interfaceClass.getClass().getName() + " must be a interface!");
-		try {
-			doConnect();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return Proxy.newProxyInstance(interfaceClass.getClassLoader(),new Class<?>[]{interfaceClass}, new InvocationHandler(){
+    public RpcConsumerImpl() {
+    	super();
+    	host = System.getProperty("SIP", "127.0.0.1");
+    	//consumerHandlerPool = new ConsumerHandlerPool(host, PORT);
+    }
+    
+   
 
-			public Object invoke(Object proxy, Method method, Object[] arguments)
-					throws Throwable {
-				// TODO Auto-generated method stub
-				String methodName = method.getName();
-				Class<?>[] parameterTypes = method.getParameterTypes();
-				//创建请求并初始化
-				RpcRequest req = new RpcRequest();
-				req.setMethodName(methodName);
-				req.setParameterTypes(parameterTypes);
-				req.setParameters(arguments);
-				req.setInterfaceType(interfaceClass);
-				try {
-					RpcContext context = RpcContext.getRpcContext();
-					//req.setRpcTimeoutInMillis(rpcTimeoutInMillis(context));
-					req.setRequestID(context.getRpcId());
-					boolean async = context.isAsync(methodName);
-					return send(req, async);
-				} finally {
-					RpcContext.removeRpcContext();
-				}
-			}
-		});
-	}
-	private RpcResponse send(RpcRequest req , boolean async) throws IOException, InterruptedException, ExecutionException, TimeoutException{
-		/**
-		 *  RpcRequest -》 RpcEncoder --》 bytep[] - > server
-		 *  server - > byte[] - >  RpcDecoder -》  RpcResponse 
-		 */
-		
-		
-		while(!stop){
-			int s = selector.select();
-			System.out.println("stop:" + stop + ",selector.select():" + s);
-			if(s > 0){
-				Set<SelectionKey> keys = selector.selectedKeys();
-				Iterator<SelectionKey> it = keys.iterator();
-				SelectionKey key = null;
-				while(it.hasNext()){
-					key = it.next();
-					it.remove();
-					try {
-						return handle(key,req);
-					} catch (ClassNotFoundException e) {
-						// TODO Auto-generated catch block
-						if(key != null)
-							key.cancel();
-						e.printStackTrace();
-					}
-				}
-				//
-				//			System.out.println("methodName:" + req.getMethodName());
-				//			byte[] request = SerializableUtil.serializeObject(req);
-				//			ByteBuffer buf = ByteBuffer.allocate(1024);
-				//			buf.clear();
-				//			buf.put(request);
-				//			buf.flip();
-				//			while(buf.hasRemaining()){
-				//				sc.write(buf);
-				//			}
-				//			ResponseFuture<Object> future = null;
-				//			if(async){
-				//				future = new ResponseFuture<Object>();
-				//
-				//				return (RpcResponse)future.get(timeout, TimeUnit.SECONDS);
-				//			}else{
-				//
-				//			}
-				//			return (RpcResponse)future.getResponse();
-			}
-		}
-	}
-	private RpcResponse handle(SelectionKey key,RpcRequest req) throws IOException, ClassNotFoundException{
-		if(key.isValid()){
-			SocketChannel sc = (SocketChannel) key.channel();
-			System.out.println("client key.isConnectable():" + key.isConnectable() + ",key.isReadable()" + key.isReadable() + ",sc.finishConnect():" + sc.finishConnect());
-			//if(key.isConnectable()){
-			if(key.isReadable()){
-					ByteBuffer readBuffer = ByteBuffer.allocate(1024*10);
-					int readBytes = sc.read(readBuffer);
-					System.out.println("client readBytes:" + readBytes); 
-					if(readBytes > 0){
-						readBuffer.flip();
-						byte[] bytes = new byte[readBytes];
-						readBuffer.get(bytes);
-						RpcResponse response = (RpcResponse)SerializableUtil.deserializeObject(bytes);
-						System.out.println("response.getResult():" + response.getResult());
-						this.stop = true;
-						return response;
-					}else if(readBytes < 0){
-						key.cancel();
-						sc.close();
-					}
-			}else if(sc.finishConnect() ){
-				sc.register(selector, SelectionKey.OP_READ);
-				doWriter(sc,req);
-			}else{
-				System.out.println("连接失败。。。");
-				System.exit(1);
-			}
-			//}
-		}
-		return new RpcResponse("");
-	}
-	private void doWriter(SocketChannel sc,RpcRequest req) throws IOException{
-		byte[] request = SerializableUtil.serializeObject(req);
-		ByteBuffer buf = ByteBuffer.allocate(1024);
-		buf.put(request);
-		buf.flip();
-		sc.write(buf);
-		System.out.println("send to server success");
-	}
+    /**
+     * set the interface which this consumer want to use
+     * actually,it will call a remote service to get the result of this interface's methods
+     *
+     * @param interfaceClass
+     * @return
+     */
+    @Override
+    public RpcConsumer interfaceClass(Class<?> interfaceClass) {
+        this.interfaceClazz = interfaceClass;
+        return this;
+    }
 
-	/**
-	 * newRpcClient()--> open() --> proxy invoke(localData) --> RpcInvoker.invoke(Request)
-	 * --> isAsync? timeout? set to request -->connector.send(RequestMsg)
-	 */
-	public void asynCall(String call) {
-		// TODO Auto-generated method stub
-		RpcContext ctx = RpcContext.getRpcContext();
-		RpcContext.addProp("async", call);
-	}
+    ;
 
-	public void cancelAsyn(String call) {
-		// TODO Auto-generated method stub
-		RpcContext ctx = RpcContext.getRpcContext();
-		Map<String,Object> map = ctx.getProps();
-		for(String key : map.keySet()){
-			if(call.equals(key)){
-				map.remove(key);
-			}
-		}
-	}
+    /**
+     * set the version of the service
+     *
+     * @param version
+     * @return
+     */
+    @Override
+    public RpcConsumer version(String version) {
+        //TODO
+        return this;
+    }
 
-	public void asynCall(String call, Object listener) {
-		// TODO Auto-generated method stub
+    /**
+     * set the timeout of the service
+     * consumer's time will take precedence of the provider's timeout
+     *
+     * @param clientTimeout
+     * @return
+     */
+    @Override
+    public RpcConsumer clientTimeout(int clientTimeout) {
+        this.clientTimeout = clientTimeout;
+        return this;
+    }
 
-	}
+    /**
+     * register a consumer hook to this service
+     * @param hook
+     * @return
+     */
+    @Override
+    public RpcConsumer hook(ConsumerHook hook) {
+    	this.consumerHook = hook;
+        return this;
+    }
 
-	public RpcConsumer  version(String version) {
-		// TODO Auto-generated method stub
-		this.version = version;
-		return this;
-	}
+    /**
+     * return an Object which can cast to the interface class
+     *
+     * @return
+     */
+    @Override
+    public Object instance() {
+        //TODO return an Proxy
+        return Proxy.newProxyInstance(this.getClass().getClassLoader(),new Class[]{this.interfaceClazz},this);
+    }
 
-	public RpcConsumer  clientTimeout(int timeout) {
-		// TODO Auto-generated method stub
-		this.timeout = timeout;
-		return this;
-	}
+    /**
+     * mark a async method,default future call
+     *
+     * @param methodName
+     */
+    @Override
+    public void asynCall(String methodName) {
+        asynCall(methodName, null);
+    }
 
-	public RpcConsumer  hook(ConsumerHook hook) {
-		// TODO Auto-generated method stub
-		this.hook = hook;
-		return this;
-	}
+    /**
+     * mark a async method with a callback listener
+     *
+     * @param methodName
+     * @param callbackListener
+     */
+    @SuppressWarnings("unchecked")
+	@Override
+    public <T extends ResponseCallbackListener> void asynCall(final String methodName, 
+    															T callbackListener) 
+    {
+    }
+    
+    @Override
+    public void cancelAsyn(String methodName) {
+        asynLocalSet.get().remove(methodName); //解除锁定
+    }
 
-
-
-	public Class<?> getInterfaceClass() {
-		return interfaceClass;
-	}
-	public void setInterfaceClass(Class<?> interfaceClass) {
-		this.interfaceClass = interfaceClass;
-	}
-	public String getVersion() {
-		return version;
-	}
-
-	public void setVersion(String version) {
-		this.version = version;
-	}
-
-	public int getTimeout() {
-		return timeout;
-	}
-
-	public void setTimeout(int timeout) {
-		this.timeout = timeout;
-	}
-
-	public ConsumerHook getHook() {
-		return hook;
-	}
-
-	public void setHook(ConsumerHook hook) {
-		this.hook = hook;
-	}
-	public RpcConsumer  interfaceClass(Class<?> interfaceClass) {
-		// TODO Auto-generated method stub
-		this.interfaceClass = interfaceClass;
-		return this;
-	}
-
+    private boolean isAsyn(String methodName)
+    {
+    	return asynLocalSet.get().contains(methodName);
+    }
+    
+    //调用方法的协议：方法名  参数类型  参数值  上下文
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable 
+    {
+    	return null;
+    }
 }
+
