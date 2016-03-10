@@ -7,7 +7,15 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-
+/**
+ * 序列化和反序列化
+ * 1.JDK原生方法
+ * 2.FST
+ * 3.Kryo
+ * 
+ * @author wqx
+ *
+ */
 public class SerializableUtil {
 
 //	static FSTConfiguration configuration = FSTConfiguration
