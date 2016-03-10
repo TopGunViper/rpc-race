@@ -4,9 +4,4 @@
 *.project
 *.classpath
 */.settings/
-.svn
-
-# Package Files #
-*.jar
-*.war
-*.ear
+/target/

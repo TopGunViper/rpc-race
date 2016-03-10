@@ -10,7 +10,7 @@ public class RpcEncoder extends MessageToByteEncoder{
 	protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out)
 			throws Exception {
 		// TODO Auto-generated method stub
-        byte[] body = SerializableUtil.FSTserialize(msg);
+        byte[] body = null;//SerializableUtil.FSTserialize(msg);
         int dataLength = body.length;
         out.writeInt(dataLength);
         out.writeBytes(body);
