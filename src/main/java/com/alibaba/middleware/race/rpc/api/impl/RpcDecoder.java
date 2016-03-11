@@ -5,25 +5,38 @@ import java.util.List;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 
 /**
- * RpcDecoder提供RPC解码，扩展Netty的ByteToMessageDecoder的decode抽象方法
+ * RpcDecoder提供RPC解码
+ * 扩展Netty的LengthFieldBasedFrameDecoder的decode方法,解决TCP粘包问题
+ * 
  * @author wqx
  *
  */
-public class RpcDecoder extends ByteToMessageDecoder {
+public class RpcDecoder extends LengthFieldBasedFrameDecoder {
 
-	private Class<?> interfaceType;
 	
-	public RpcDecoder(Class<?> type){
-		this.interfaceType = type;
+	public RpcDecoder(int maxObjectSize){
+		super(maxObjectSize, 0, 4, 0, 4);
 	}
-	
+
 	@Override
-	protected void decode(ChannelHandlerContext ctx, ByteBuf in,
-			List<Object> out) throws Exception {
+	protected Object decode(ChannelHandlerContext ctx, ByteBuf buf)throws Exception {
 		// TODO Auto-generated method stub
+		ByteBuf res = (ByteBuf) super.decode(ctx, buf);
 		
+		byte[] out = new byte[res.readableBytes()];
+		
+		return SerializableUtil.deserializeObject(out);
 	}
+
+	@Override
+	protected ByteBuf extractFrame(ChannelHandlerContext ctx, ByteBuf buffer,
+			int index, int length) {
+		// TODO Auto-generated method stub
+		return super.extractFrame(ctx, buffer, index, length);
+	}
+	
 
 }
