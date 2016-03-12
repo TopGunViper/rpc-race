@@ -27,8 +27,15 @@ import com.alibaba.middleware.race.rpc.api.*;
 
 public class RpcProviderImpl extends RpcProvider
 {
-	private static int PORT = 8888;
+	private static int DEFAULT_PORT = 8888;
 	
+    private Object serviceInstance;
+    
+    private Class<?> serviceInterface;
+
+    private String version;
+    
+    
     public RpcProviderImpl() {
     	System.out.println("rpc provider start");
     }
@@ -51,6 +58,7 @@ public class RpcProviderImpl extends RpcProvider
     @Override
     public RpcProvider version(String version){
         //TODO
+    	this.version = version;
         return this;
     }
 
@@ -93,10 +101,20 @@ public class RpcProviderImpl extends RpcProvider
     @Override
     public void publish() 
     {
+    	//默认端口8888
+    	publish(DEFAULT_PORT);
+    }
+    public void publish(int port){
+    	//配置服务器端线程组
+    	EventLoopGroup bossGroup = new NioEventLoopGroup();
+    	EventLoopGroup workerGroup = new NioEventLoopGroup();
+    	
+    	ServerBootstrap b = new ServerBootstrap();
+    	b.group(bossGroup, workerGroup)
+    		.channel(NioServerSocketChannel.class);
+    		
+    	
+    	
     }
     
-    private Object serviceInstance;
-    private Class<?> serviceInterface;
-    
-   
 }
