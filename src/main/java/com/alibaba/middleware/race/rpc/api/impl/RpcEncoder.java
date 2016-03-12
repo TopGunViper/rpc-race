@@ -6,7 +6,7 @@ import io.netty.handler.codec.MessageToByteEncoder;
 
 /**
  * 
- * 
+ * 继承MessageToByteEncoder实现编码器
  * @author wqx
  *
  */
