@@ -5,14 +5,19 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Future;
-
+/**
+ * ThreadLocal，为每个线程提供一个独立的变量副本，隔离多个线程对数据的访问冲突。
+ * 
+ * @author wqx
+ *
+ */
 public class RpcContext {
 	
-	private static final ThreadLocal<RpcContext> rpcContext = new ThreadLocal<RpcContext>(){
+	public static final ThreadLocal<Map<String,Object>> LOCAL  = new ThreadLocal<Map<String,Object>>(){
 		@Override
-		protected synchronized RpcContext initialValue() {
+		protected synchronized Map<String,Object> initialValue() {
 			// TODO Auto-generated method stub
-			return new RpcContext();
+			return new HashMap<String,Object>();
 		}
 	};
 	
@@ -22,18 +27,16 @@ public class RpcContext {
 	public RpcContext(){
 	}
 	
-    public static Map<String,Object> props = new HashMap<String, Object>();
-
-    public static void addProp(String key ,Object value){
-        props.put(key,value);
+    public  static void addProp(String key ,Object value){
+    	LOCAL.get().put(key,value);
     }
 
-    public static Object getProp(String key){
-        return props.get(key);
+    public static  Object getProp(String key){
+        return LOCAL.get().get(key);
     }
 
     public static Map<String,Object> getProps(){
-       return Collections.unmodifiableMap(props);
+       return Collections.unmodifiableMap(LOCAL.get());
     }
     
 	//url
@@ -96,15 +99,8 @@ public class RpcContext {
 	public void setAttachments(Map<String, Object> attachments) {
 		this.attachments = attachments;
 	}
-
-	public static RpcContext getRpcContext(){
-		return rpcContext.get();
-	}
-	public static void removeRpcContext(){
-		rpcContext.remove();
-	}
 	public  boolean isAsync(String methodName) {
-		return props.containsKey(methodName);
+		return LOCAL.get().containsKey(methodName);
 	}
 
 	public Future<?> getFuture() {
