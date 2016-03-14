@@ -4,6 +4,7 @@ package com.alibaba.middleware.race.rpc.api.impl;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.AdaptiveRecvByteBufAllocator;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -16,6 +17,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+
 
 
 
@@ -111,10 +114,19 @@ public class RpcProviderImpl extends RpcProvider
     	
     	ServerBootstrap b = new ServerBootstrap();
     	b.group(bossGroup, workerGroup)
-    		.channel(NioServerSocketChannel.class);
-    		
-    	
-    	
+    		.channel(NioServerSocketChannel.class)
+    		.option(ChannelOption.SO_BACKLOG,1024)
+    		.option(ChannelOption.TCP_NODELAY,true)
+    		.childHandler(new ChannelInitializer(){
+
+				@Override
+				protected void initChannel(Channel ch) throws Exception {
+					// TODO Auto-generated method stub
+					ch.pipeline().addLast(new RpcDecoder(4096));
+					ch.pipeline().addLast(new RpcEncoder());
+					ch.pipeline().addLast(new ProviderHandler(serviceInstance));
+				}
+    		});
     }
     
 }
