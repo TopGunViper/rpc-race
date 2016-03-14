@@ -1,102 +1,67 @@
 package com.alibaba.middleware.race.rpc.model;
 
-import java.net.InetSocketAddress;
+import java.io.Serializable;
 import java.util.Map;
 
-public class RpcRequest implements java.io.Serializable{
+
+/**
+ * Created by huangsheng.hs on 2015/5/7.
+ */
+public class RpcRequest implements Serializable
+{
 	
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -99874314780126808L;
-	/**
-	 * 
-	 */
-	
-	private String requestID;
-	private Class<?>  interfaceType;
 	private String methodName;
-	private Class<?> [] parameterTypes;
-	private Object[] parameters;
+	private Class<?>[] parameterTypes;
+	private Object[] args;
+	private Map<String,Object> contextMap;
 	
-	private Map<String, String> attachments;
-	
-	private Exception           exception;
-	
-	private InetSocketAddress serverAddress;
-	private InetSocketAddress clientAddress;
-	private Integer rpcTimeoutInMillis = Integer.MAX_VALUE;
-	
-	public RpcRequest(){}
-	
-	public RpcRequest(Class<?> type,String method,Class<?>[] parameterTypes,Object[] parameters){
-		this.interfaceType = type;
-		this.methodName = method;
+	public RpcRequest(String methodName,Class<?>[] parameterTypes,Object[] args,
+						Map<String,Object> contextMap)
+	{
+		this.methodName = methodName;
 		this.parameterTypes = parameterTypes;
-		this.parameters = parameters;
+		this.args = args;
+		this.contextMap = contextMap;
 	}
 	
-	public Class<?> getInterfaceType() {
-		return interfaceType;
+	
+
+	public Map<String, Object> getContextMap() {
+		return contextMap;
 	}
-	public void setInterfaceType(Class<?> interfaceType) {
-		this.interfaceType = interfaceType;
+
+
+
+	public void setContextMap(Map<String, Object> contextMap) {
+		this.contextMap = contextMap;
 	}
+
+
+
 	public String getMethodName() {
 		return methodName;
 	}
+
 	public void setMethodName(String methodName) {
 		this.methodName = methodName;
 	}
+
 	public Class<?>[] getParameterTypes() {
 		return parameterTypes;
 	}
+
 	public void setParameterTypes(Class<?>[] parameterTypes) {
 		this.parameterTypes = parameterTypes;
 	}
-	public Object[] getParameters() {
-		return parameters;
-	}
-	public void setParameters(Object[] parameters) {
-		this.parameters = parameters;
-	}
-	public Map<String, String> getAttachments() {
-		return attachments;
-	}
-	public void setAttachments(Map<String, String> attachments) {
-		this.attachments = attachments;
-	}
-	public Exception getException() {
-		return exception;
-	}
-	public void setException(Exception exception) {
-		this.exception = exception;
-	}
-	public InetSocketAddress getServerAddress() {
-		return serverAddress;
-	}
-	public void setServerAddress(InetSocketAddress serverAddress) {
-		this.serverAddress = serverAddress;
-	}
-	public InetSocketAddress getClientAddress() {
-		return clientAddress;
-	}
-	public void setClientAddress(InetSocketAddress clientAddress) {
-		this.clientAddress = clientAddress;
-	}
-	public int getRpcTimeoutInMillis() {
-		return rpcTimeoutInMillis;
-	}
-	public void setRpcTimeoutInMillis(int rpcTimeoutInMillis) {
-		this.rpcTimeoutInMillis = rpcTimeoutInMillis;
+
+	public Object[] getArgs() {
+		return args;
 	}
 
-	public String getRequestID() {
-		return requestID;
+	public void setArgs(Object[] args) {
+		this.args = args;
 	}
-	public void setRequestID(String requestID) {
-		this.requestID = requestID;
-	}
+
 	
 	
 }
