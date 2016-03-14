@@ -90,12 +90,12 @@ public class SerializableUtil {
 	{
 		Class<?> [] parameterType = {Integer.class,String.class};
 		Object[] parameters = {10,"hello rpc"};
-		RpcRequest req = new RpcRequest(SerializableUtil.class,"methodA",parameterType,parameters);
+		//RpcRequest req = new RpcRequest(SerializableUtil.class,"methodA",parameterType,parameters);
 		
-		RpcRequest req_jdk = (RpcRequest)deserializeObject(serializeObject(req));
-		System.out.println("req_jdk,methodName:" + req_jdk.getMethodName());
-		RpcRequest req_fst = (RpcRequest)deserializeObject(serializeObject(req));
-		System.out.println("req_fst,methodName:" + req_jdk.getMethodName());
+//		RpcRequest req_jdk = (RpcRequest)deserializeObject(serializeObject(req));
+//		System.out.println("req_jdk,methodName:" + req_jdk.getMethodName());
+//		RpcRequest req_fst = (RpcRequest)deserializeObject(serializeObject(req));
+//		System.out.println("req_fst,methodName:" + req_jdk.getMethodName());
 		
 	}
 }

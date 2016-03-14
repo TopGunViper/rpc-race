@@ -26,6 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
 import com.alibaba.middleware.race.rpc.aop.ConsumerHook;
 import com.alibaba.middleware.race.rpc.api.*;
 import com.alibaba.middleware.race.rpc.async.ResponseCallbackListener;
@@ -51,7 +52,7 @@ public class RpcConsumerImpl extends RpcConsumer
 	private Class<?> interfaceClazz;
 	private static String host;
 	private ChannelFuture f;
-	//private ConsumerHandlerPool consumerHandlerPool;
+	
 	
     public RpcConsumerImpl() {
     	super();
@@ -144,6 +145,7 @@ public class RpcConsumerImpl extends RpcConsumer
     public <T extends ResponseCallbackListener> void asynCall(final String methodName, 
     															T callbackListener) 
     {
+    	
     }
     
     @Override
@@ -160,7 +162,34 @@ public class RpcConsumerImpl extends RpcConsumer
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable 
     {
+    	RpcRequest req = new RpcRequest(method.getName(),method.getParameterTypes(),
+    			args,RpcContext.LOCAL.get());
+    	
+    	
+    	
     	return null;
+    }
+    private void connect(String host,int port){
+    	EventLoopGroup group = new NioEventLoopGroup();
+    	Bootstrap b = new Bootstrap();
+    	b.group(group)
+    		.option(ChannelOption.TCP_NODELAY,true)
+    		.handler(new ChannelInitializer<SocketChannel>(){
+
+				@Override
+				protected void initChannel(SocketChannel ch) throws Exception {
+					// TODO Auto-generated method stub
+					ch.pipeline().addLast(new RpcDecoder(4096));
+					ch.pipeline().addLast(new RpcEncoder());
+					ch.pipeline().addLast(new ConsumerHandler());
+				}
+    			
+    		});
+    	
+    }
+    private void sendMsg(RpcRequest req){
+    	
+    	
     }
 }
 
