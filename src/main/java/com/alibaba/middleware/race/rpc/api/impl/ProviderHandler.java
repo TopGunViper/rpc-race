@@ -10,7 +10,11 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
 public class ProviderHandler extends ChannelInboundHandlerAdapter {
-
+	private Object serviceInstance;
+	
+	public ProviderHandler(Object service){
+		this.serviceInstance = service;
+	}
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg)
 			throws Exception {
@@ -33,20 +37,19 @@ public class ProviderHandler extends ChannelInboundHandlerAdapter {
 	 */
 	private RpcResponse handleRequest(RpcRequest req){
 		RpcResponse resp = new RpcResponse();
-
-		Class<?> interfaceType = req.getInterfaceType();
+		
 		String methodName = req.getMethodName();
 		Class<?>[] parameterTypes = req.getParameterTypes();
-		Object[] parameters = req.getParameters();
+		Object[] parameters = req.getArgs();
 
 		try {
-			Method method = interfaceType.getMethod(methodName, parameterTypes);
-			Object result = method.invoke(interfaceType, parameters);
-			resp.setResult(result);
+			Method method = serviceInstance.getClass().getMethod(methodName, parameterTypes);
+			Object result = method.invoke(serviceInstance, parameters);
+			resp.setAppResponse(result);
 		}catch(Throwable t){
 			// TODO Auto-generated catch block
-			resp.setError(true);
-			resp.setResult(t);
+			resp.setErrorMsg("error");
+			resp.setAppResponse(t);
 		}
 		return resp;
 	}
