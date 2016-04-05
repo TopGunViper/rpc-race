@@ -14,6 +14,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,18 +47,33 @@ public class RpcConsumerImpl extends RpcConsumer
 			return new HashSet<String>();
 		}
 	};
+	private static String host;
 	private static int PORT = 8888;
 	public static ConsumerHook consumerHook;
 	public static int clientTimeout;
 	private Class<?> interfaceClazz;
-	private static String host;
 	private ChannelFuture f;
+	
+	private EventLoopGroup group;
+	private Bootstrap b;
 	
 	
     public RpcConsumerImpl() {
-    	super();
-    	host = System.getProperty("SIP", "127.0.0.1");
-    	//consumerHandlerPool = new ConsumerHandlerPool(host, PORT);
+    	host = "127.0.0.1";//System.getProperty("SIP", "127.0.0.1");
+    	group = new NioEventLoopGroup();
+    	b = new Bootstrap();
+    	b.group(group).channel(NioSocketChannel.class)
+    				  .option(ChannelOption.TCP_NODELAY, true)
+    				  .handler(new ChannelInitializer<SocketChannel>(){
+						@Override
+						protected void initChannel(SocketChannel ch)
+								throws Exception {
+							// TODO Auto-generated method stub
+							ch.pipeline().addLast(new RpcDecoder(4096));
+							ch.pipeline().addLast(new RpcEncoder());
+							ch.pipeline().addLast(new ConsumerHandler());
+						}
+    				  });
     }
     
    
@@ -162,34 +178,30 @@ public class RpcConsumerImpl extends RpcConsumer
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable 
     {
+    	//异步调用方法不允许重复调用，直接返回
+    	if(isAsyn(method.getName())) return null;
     	RpcRequest req = new RpcRequest(method.getName(),method.getParameterTypes(),
     			args,RpcContext.LOCAL.get());
+    	consumerHook.before(req);//设置hook
     	
-    	
-    	
-    	return null;
+    	ConsumerHandler handler = getConsumerHandler();
+    	RpcResponse resp = handler.sendRequest(req);
+    	Object result = resp.getAppResponse();
+    	//处理异常情况
+    	if(result instanceof Throwable){
+    		throw (Throwable)result;
+    	}
+    	consumerHook.after(req);
+    	return result;
     }
-    private void connect(String host,int port){
-    	EventLoopGroup group = new NioEventLoopGroup();
-    	Bootstrap b = new Bootstrap();
-    	b.group(group)
-    		.option(ChannelOption.TCP_NODELAY,true)
-    		.handler(new ChannelInitializer<SocketChannel>(){
-
-				@Override
-				protected void initChannel(SocketChannel ch) throws Exception {
-					// TODO Auto-generated method stub
-					ch.pipeline().addLast(new RpcDecoder(4096));
-					ch.pipeline().addLast(new RpcEncoder());
-					ch.pipeline().addLast(new ConsumerHandler());
-				}
-    			
-    		});
-    	
-    }
-    private void sendMsg(RpcRequest req){
-    	
-    	
+    private ConsumerHandler getConsumerHandler(){
+    	try {
+			f = b.connect(new InetSocketAddress(host,PORT)).sync();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	return f.channel().pipeline().get(ConsumerHandler.class); 
     }
 }
 
