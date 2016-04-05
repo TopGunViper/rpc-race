@@ -26,6 +26,9 @@ import java.util.concurrent.Executors;
 
 
 
+
+
+
 import com.alibaba.middleware.race.rpc.api.*;
 
 
@@ -106,9 +109,14 @@ public class RpcProviderImpl extends RpcProvider
     public void publish() 
     {
     	//默认端口8888
-    	publish(DEFAULT_PORT);
+    	try {
+			publish(DEFAULT_PORT);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
-    public void publish(int port){
+    public void publish(int port) throws InterruptedException{
     	//配置服务器端线程组
     	EventLoopGroup bossGroup = new NioEventLoopGroup();
     	EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -128,6 +136,8 @@ public class RpcProviderImpl extends RpcProvider
 					ch.pipeline().addLast(new ProviderHandler(serviceInstance));
 				}
     		});
+		ChannelFuture f = b.bind(port).sync();
+		System.out.println("server start! port:"+port);
+		f.channel().closeFuture().sync();
     }
-    
 }

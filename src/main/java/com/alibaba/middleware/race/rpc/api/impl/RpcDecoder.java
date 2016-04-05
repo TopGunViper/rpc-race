@@ -16,7 +16,6 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
  */
 public class RpcDecoder extends LengthFieldBasedFrameDecoder {
 
-	
 	public RpcDecoder(int maxObjectSize){
 		super(maxObjectSize, 0, 4, 0, 4);
 	}
@@ -24,8 +23,8 @@ public class RpcDecoder extends LengthFieldBasedFrameDecoder {
 	@Override
 	protected Object decode(ChannelHandlerContext ctx, ByteBuf buf)throws Exception {
 		// TODO Auto-generated method stub
+		System.out.println("decode" + buf.array().length);
 		ByteBuf res = (ByteBuf) super.decode(ctx, buf);
-		
 		byte[] out = new byte[res.readableBytes()];
 		
 		return SerializableUtil.deserializeObject(out);

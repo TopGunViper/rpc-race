@@ -20,6 +20,7 @@ public class RpcEncoder extends MessageToByteEncoder<Object>{
         int dataLength = body.length;
         out.writeInt(dataLength);
         out.writeBytes(body);
+        System.out.println("encode! dataLength:" + dataLength);
 	}
 	
 }
