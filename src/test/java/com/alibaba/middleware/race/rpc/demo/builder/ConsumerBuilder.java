@@ -49,6 +49,7 @@ public class ConsumerBuilder {
 
     @Test
     public void testNormalApiCall() {
+    	System.out.println("testNormalApiCall");
     	System.out.println("apiService.getString():" + apiService.getString());
 //        Assert.assertNotNull(apiService.getMap());
 //        Assert.assertEquals("this is a rpc framework", apiService.getString());

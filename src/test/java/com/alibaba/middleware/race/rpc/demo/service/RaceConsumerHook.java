@@ -1,8 +1,9 @@
 package com.alibaba.middleware.race.rpc.demo.service;
 
 import com.alibaba.middleware.race.rpc.aop.ConsumerHook;
+
 import com.alibaba.middleware.race.rpc.context.RpcContext;
-import com.alibaba.middleware.race.rpc.service.RpcRequest;
+import com.alibaba.middleware.race.rpc.model.RpcRequest;
 /**
  */
 public class RaceConsumerHook implements ConsumerHook{

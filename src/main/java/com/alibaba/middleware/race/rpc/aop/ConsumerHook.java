@@ -1,6 +1,6 @@
 package com.alibaba.middleware.race.rpc.aop;
 
-import com.alibaba.middleware.race.rpc.service.RpcRequest;
+import com.alibaba.middleware.race.rpc.model.RpcRequest;
 
 public interface ConsumerHook {
     public void before(RpcRequest request);
