@@ -1,10 +1,7 @@
 package com.alibaba.middleware.race.rpc.api.impl;
 
-import java.util.List;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 
 /**
@@ -23,10 +20,12 @@ public class RpcDecoder extends LengthFieldBasedFrameDecoder {
 	@Override
 	protected Object decode(ChannelHandlerContext ctx, ByteBuf buf)throws Exception {
 		// TODO Auto-generated method stub
-		System.out.println("decode" + buf.array().length);
-		ByteBuf res = (ByteBuf) super.decode(ctx, buf);
-		byte[] out = new byte[res.readableBytes()];
-		
+		ByteBuf b = (ByteBuf) super.decode(ctx, buf);
+        if (b == null) {
+            return null;
+        }
+		byte[] out = new byte[b.readableBytes()];
+		b.readBytes(out);
 		return SerializableUtil.deserializeObject(out);
 	}
 

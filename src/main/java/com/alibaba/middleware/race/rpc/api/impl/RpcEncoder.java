@@ -12,15 +12,15 @@ import io.netty.handler.codec.MessageToByteEncoder;
  */
 public class RpcEncoder extends MessageToByteEncoder<Object>{
 
+	private static final byte[] HOLDER = new byte[4];
 	@Override
 	protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out)
 			throws Exception {
 		// TODO Auto-generated method stub
-        byte[] body = SerializableUtil.FSTserialize(msg);
-        int dataLength = body.length;
-        out.writeInt(dataLength);
-        out.writeBytes(body);
-        System.out.println("encode! dataLength:" + dataLength);
+		int index = out.writerIndex();
+		out.writeBytes(HOLDER);
+		out.writeBytes(SerializableUtil.serializeObject(msg));
+		out.setInt(index, out.writerIndex() - index - 4);
 	}
-	
+
 }
