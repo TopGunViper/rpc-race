@@ -33,6 +33,7 @@ import com.alibaba.middleware.race.rpc.api.*;
 import com.alibaba.middleware.race.rpc.async.ResponseCallbackListener;
 import com.alibaba.middleware.race.rpc.async.ResponseFuture;
 import com.alibaba.middleware.race.rpc.context.RpcContext;
+import com.alibaba.middleware.race.rpc.model.RpcException;
 import com.alibaba.middleware.race.rpc.model.RpcRequest;
 import com.alibaba.middleware.race.rpc.model.RpcResponse;
 
@@ -64,6 +65,7 @@ public class RpcConsumerImpl extends RpcConsumer
     	b = new Bootstrap();
     	b.group(group).channel(NioSocketChannel.class)
     				  .option(ChannelOption.TCP_NODELAY, true)
+    				  .option(ChannelOption.SO_KEEPALIVE, true)
     				  .handler(new ChannelInitializer<SocketChannel>(){
 						@Override
 						protected void initChannel(SocketChannel ch)
@@ -161,7 +163,42 @@ public class RpcConsumerImpl extends RpcConsumer
     public <T extends ResponseCallbackListener> void asynCall(final String methodName, 
     															T callbackListener) 
     {
-    	
+    	if(isAsyn(methodName)) return;//异步调用不能重复
+
+    	FutureTask<RpcResponse> task = new FutureTask<RpcResponse>(new Callable<RpcResponse>(){
+        	/**
+        	 * 构造异步Task
+        	 */
+			public RpcResponse call() throws Exception {
+				// TODO Auto-generated method stub
+		    	RpcRequest req = new RpcRequest(methodName,null,null,RpcContext.LOCAL.get());
+		    	consumerHook.before(req);//设置hook
+		    	ConsumerHandler handler = getConsumerHandler();
+		    	RpcResponse resp = handler.sendRequest(req);
+		    	consumerHook.after(req);
+		    	return resp;
+			}
+    	});
+    	new Thread(task).start();
+    	if(callbackListener != null){
+    		RpcResponse resp = null;
+				try {
+					resp = task.get(clientTimeout, TimeUnit.MILLISECONDS);
+					if(resp.isError())
+						throw new RpcException();
+					callbackListener.onResponse(resp.getAppResponse());
+				}catch (TimeoutException e) {
+					// TODO Auto-generated catch block
+					callbackListener.onTimeout();
+				}catch (RpcException e) {
+					// TODO Auto-generated catch block
+					callbackListener.onException(new Exception(resp.getErrorMsg()));
+				} catch(Exception e){
+					e.printStackTrace();
+				}
+    	}else{
+    		ResponseFuture.setFuture(task);
+    	}
     }
     
     @Override
@@ -180,6 +217,7 @@ public class RpcConsumerImpl extends RpcConsumer
     {
     	//异步调用方法不允许重复调用，直接返回
     	if(isAsyn(method.getName())) return null;
+    	//
     	RpcRequest req = new RpcRequest(method.getName(),method.getParameterTypes(),
     			args,RpcContext.LOCAL.get());
     	consumerHook.before(req);//设置hook
