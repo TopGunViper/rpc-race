@@ -33,4 +33,10 @@ public interface UserService {
 	 * @throws IOException
 	 */
 	public Object exceptionTest() throws RpcException;
+	
+	/**
+	 * 超时测试
+	 */
+	public void timeoutTest();
+	
 }
