@@ -12,6 +12,8 @@ import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import edu.ouc.rpc.context.RpcContext;
+
 /**
  * rpc服务类
  * 
@@ -41,7 +43,8 @@ public final class RpcBuilder {
 					ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 					try{
 						//构造请求参数对象
-						RpcRequest request = new RpcRequest(method.getName(), method.getParameterTypes(),args);
+						
+						RpcRequest request = new RpcRequest(method.getName(), method.getParameterTypes(),args,RpcContext.getAttributes());
 						//发送
 						out.writeObject(request);
 
@@ -105,6 +108,8 @@ public final class RpcBuilder {
 					Object req = in.readObject();
 					if(req instanceof RpcRequest){
 						RpcRequest rpcRequest = (RpcRequest)req;
+						//关联客户端传来的上下文
+						RpcContext.context.set(rpcRequest.getContext());
 						Method method = service.getClass().getMethod(rpcRequest.getMethodName(), rpcRequest.getParameterTypes());
 						Object retVal = method.invoke(service, rpcRequest.getArgs());
 						response.setResponseBody(retVal);

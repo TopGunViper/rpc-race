@@ -1,6 +1,7 @@
 package edu.ouc.rpc;
 
 import java.io.Serializable;
+import java.util.Map;
 
 
 /**
@@ -25,11 +26,14 @@ public class RpcRequest implements Serializable
 	//参数列表
 	private Object[] args;
 	
-	public RpcRequest(String methodName,Class<?>[] parameterTypes,Object[] args)
+	private Map<String,Object> context;
+	
+	public RpcRequest(String methodName,Class<?>[] parameterTypes,Object[] args, Map<String,Object> context)
 	{
 		this.methodName = methodName;
 		this.parameterTypes = parameterTypes;
 		this.args = args;
+		this.context = context;
 	}
 	
 	public String getMethodName() {
@@ -54,6 +58,14 @@ public class RpcRequest implements Serializable
 
 	public void setArgs(Object[] args) {
 		this.args = args;
+	}
+
+	public Map<String, Object> getContext() {
+		return context;
+	}
+
+	public void setContext(Map<String, Object> context) {
+		this.context = context;
 	}
 	
 }

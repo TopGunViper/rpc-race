@@ -1,6 +1,7 @@
 package edu.ouc.rpc.demo.service;
 
 import java.io.IOException;
+import java.util.Map;
 
 import edu.ouc.rpc.RpcException;
 
@@ -33,6 +34,11 @@ public interface UserService {
 	 * @throws IOException
 	 */
 	public Object exceptionTest() throws RpcException;
+
+	/**
+	 * 上下文测试，透明传输数据
+	 */
+	public Map<String,Object> rpcContextTest();
 	
 	/**
 	 * 超时测试
