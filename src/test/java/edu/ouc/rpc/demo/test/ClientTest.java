@@ -7,7 +7,8 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import edu.ouc.rpc.RpcBuilder;
+import edu.ouc.rpc.RpcConsumer;
+import edu.ouc.rpc.async.ResponseFuture;
 import edu.ouc.rpc.context.RpcContext;
 import edu.ouc.rpc.demo.service.User;
 import edu.ouc.rpc.demo.service.UserService;
@@ -20,8 +21,15 @@ public class ClientTest {
 	
 	private static UserService userService;
 	
+	private static int TIMEOUT = 3000;
+	
+	private static RpcConsumer consumer;
 	static {
-		userService = (UserService) RpcBuilder.buildRpcClient(UserService.class, host, port);
+		consumer = new RpcConsumer();
+		userService = (UserService)consumer.targetHostPort(host, port)
+							.interfaceClass(UserService.class)
+							.timeout(TIMEOUT)
+							.newProxy();
 	}
 
 	/**
@@ -60,12 +68,28 @@ public class ClientTest {
 		}catch(Exception e){
 		}
 	}
-	
+	@Ignore
 	@Test
 	public void testRpcContext(){
         RpcContext.addAttribute("client","huhuhu");
         Map<String, Object> res = userService.rpcContextTest();
         Assert.assertEquals(res.get("server"),"hahaha");
         Assert.assertEquals(res.get("client"),"huhuhu");
+	}
+	@Test
+	public void testAsyncCall(){
+        consumer.asynCall("test");
+        //立即返回
+        String nullValue = userService.test();
+        System.out.println(nullValue);
+        Assert.assertEquals(null, nullValue);
+        try {
+            String result = (String) ResponseFuture.getResponse(TIMEOUT);
+            Assert.assertEquals("hello client, this is rpc server.", result);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            consumer.cancelAsyn("test");
+        }
 	}
 }
