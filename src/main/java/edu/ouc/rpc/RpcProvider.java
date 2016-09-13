@@ -3,10 +3,8 @@ package edu.ouc.rpc;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
@@ -14,74 +12,20 @@ import java.util.concurrent.Executors;
 
 import edu.ouc.rpc.context.RpcContext;
 
-/**
- * rpc服务类
- * 
- * @author wqx
- *
- */
-public final class RpcBuilder {
-
-	public static Object buildRpcClient(final Class<?> interfaces,final String host,final int port){
-		if(interfaces == null){
-			throw new IllegalArgumentException("interfaces can not be null");
-		}
-
-		return Proxy.newProxyInstance(RpcBuilder.class.getClassLoader(), new Class<?>[]{interfaces},
-				new InvocationHandler(){
-
-			//拦截目标方法->序列化method对象->发起socket连接
-			public Object invoke(Object proxy, Method method,
-					Object[] args) throws Throwable {
-
-				//创建连接,获取输入输出流
-				Socket socket = new Socket(host,port);
-				Object retVal = null;
-				try{
-
-					ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-					ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-					try{
-						//构造请求参数对象
-						
-						RpcRequest request = new RpcRequest(method.getName(), method.getParameterTypes(),args,RpcContext.getAttributes());
-						//发送
-						out.writeObject(request);
-
-						//接受server端的返回信息---阻塞
-						Object response = in.readObject();
-
-						if(response instanceof RpcResponse){
-							RpcResponse rpcResp  = (RpcResponse)response;
-							if(!rpcResp.isError()){
-								retVal = rpcResp.getResponseBody();
-							}else{
-								throw new RpcException(rpcResp.getErrorMsg());
-							}
-						}
-					}finally{
-						out.close();
-						in.close();
-					}
-				}finally{
-					socket.close();
-				}
-				return retVal;
-			}
-		});
-	}
+public final class RpcProvider {
+	
+	
 	private static int nThreads = Runtime.getRuntime().availableProcessors() * 2;
 	private static ExecutorService handlerPool = Executors.newFixedThreadPool(nThreads);
 
-	public static void buildRpcServer(final Object service, final int port) throws IOException{
-		if (service == null)  
+	public static void publish(final Object service, final int port) throws IOException{
+		if (service == null)
 			throw new IllegalArgumentException("service can not be null.");
 
 		ServerSocket server = new ServerSocket(port);
 		System.out.println("server started!!!");
 		while(true){
 			Socket socket = server.accept();//监听请求--阻塞
-
 			//异步处理
 			handlerPool.submit(new Handler(service,socket));
 		}
