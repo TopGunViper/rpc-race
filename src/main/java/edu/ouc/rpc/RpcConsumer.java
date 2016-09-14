@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import edu.ouc.rpc.async.ResponseCallbackListener;
 import edu.ouc.rpc.async.ResponseFuture;
@@ -93,10 +94,10 @@ public final class RpcConsumer implements InvocationHandler{
 				return (RpcResponse) response;
 			}
 		});
-		
+
 		RpcResponse response;
-		try {
-			if(callbackListener != null){
+		if(callbackListener != null){
+			try {
 				//阻塞
 				response = (RpcResponse) f.get(timeout,TimeUnit.MILLISECONDS);
 				if(response.isError()){
@@ -105,11 +106,13 @@ public final class RpcConsumer implements InvocationHandler{
 				}else{
 					callbackListener.onResponse(response.getResponseBody());
 				}
-			}else{
-				//client端将从ResponseFuture中获取结果
-				ResponseFuture.setFuture(f);
-			}
-		} catch (Exception e) {}
+			} catch(TimeoutException e){
+				callbackListener.onTimeout();
+			}catch (Exception e) {}
+		}else{
+			//client端将从ResponseFuture中获取结果
+			ResponseFuture.setFuture(f);
+		}
 	}
 
 	public void cancelAsyn(String methodName) {
@@ -125,7 +128,7 @@ public final class RpcConsumer implements InvocationHandler{
 		//如果是异步方法，立即返回null
 		if(asyncMethods.get().contains(method.getName())) return null;
 		Object retVal = null;
-		
+
 		RpcRequest request = new RpcRequest(method.getName(), method.getParameterTypes(),args,RpcContext.getAttributes());
 		Object response;
 		try{
