@@ -12,6 +12,7 @@ import edu.ouc.rpc.async.ResponseFuture;
 import edu.ouc.rpc.context.RpcContext;
 import edu.ouc.rpc.demo.service.User;
 import edu.ouc.rpc.demo.service.UserService;
+import edu.ouc.rpc.demo.service.UserServiceListener;
 
 public class ClientTest {
 
@@ -76,6 +77,7 @@ public class ClientTest {
         Assert.assertEquals(res.get("server"),"hahaha");
         Assert.assertEquals(res.get("client"),"huhuhu");
 	}
+	@Ignore
 	@Test
 	public void testAsyncCall(){
         consumer.asynCall("test");
@@ -92,4 +94,16 @@ public class ClientTest {
             consumer.cancelAsyn("test");
         }
 	}
+    @Test
+    public void testCallback() {
+        UserServiceListener listener = new UserServiceListener();
+        consumer.asynCall("test", listener);
+        String nullStr = userService.test();
+        Assert.assertEquals(null, nullStr);
+        try {
+            String str = (String)listener.getResponse();
+            Assert.assertEquals("hello client, this is rpc server.", str);
+        } catch (InterruptedException e) {
+        }
+    }
 }
