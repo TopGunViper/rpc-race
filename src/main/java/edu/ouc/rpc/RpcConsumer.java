@@ -19,6 +19,9 @@ import java.util.concurrent.TimeoutException;
 import edu.ouc.rpc.async.ResponseCallbackListener;
 import edu.ouc.rpc.async.ResponseFuture;
 import edu.ouc.rpc.context.RpcContext;
+import edu.ouc.rpc.model.RpcException;
+import edu.ouc.rpc.model.RpcRequest;
+import edu.ouc.rpc.model.RpcResponse;
 
 public final class RpcConsumer implements InvocationHandler{
 

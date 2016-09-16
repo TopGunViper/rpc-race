@@ -5,7 +5,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import edu.ouc.rpc.RpcResponse;
+import edu.ouc.rpc.model.RpcResponse;
 
 
 public class ResponseFuture {

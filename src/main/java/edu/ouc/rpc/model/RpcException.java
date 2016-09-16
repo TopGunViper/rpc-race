@@ -1,4 +1,4 @@
-package edu.ouc.rpc;
+package edu.ouc.rpc.model;
 
 /**
  * 自定义异常

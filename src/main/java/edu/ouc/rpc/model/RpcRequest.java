@@ -1,4 +1,4 @@
-package edu.ouc.rpc;
+package edu.ouc.rpc.model;
 
 import java.io.Serializable;
 import java.util.Map;
