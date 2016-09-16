@@ -11,6 +11,7 @@ import edu.ouc.rpc.RpcConsumer;
 import edu.ouc.rpc.async.ResponseFuture;
 import edu.ouc.rpc.context.RpcContext;
 import edu.ouc.rpc.demo.service.User;
+import edu.ouc.rpc.demo.service.UserConsumerHook;
 import edu.ouc.rpc.demo.service.UserService;
 import edu.ouc.rpc.demo.service.UserServiceListener;
 
@@ -30,6 +31,7 @@ public class ClientTest {
 		userService = (UserService)consumer.targetHostPort(host, port)
 							.interfaceClass(UserService.class)
 							.timeout(TIMEOUT)
+							.hook(new UserConsumerHook())
 							.newProxy();
 	}
 
@@ -94,6 +96,7 @@ public class ClientTest {
             consumer.cancelAsyn("test");
         }
 	}
+	@Ignore
     @Test
     public void testCallback() {
         UserServiceListener listener = new UserServiceListener();
@@ -106,4 +109,23 @@ public class ClientTest {
         } catch (InterruptedException e) {
         }
     }
+	@Ignore
+    @Test
+    public void timeoutTest(){
+        long beginTime = System.currentTimeMillis();
+        try {
+            boolean result = userService.timeoutTest(); 
+        } catch (Exception e) {
+            long period = System.currentTimeMillis() - beginTime;
+            System.out.println("period:" + period);
+            Assert.assertTrue(period < 3100);
+        }
+    }
+    @Test
+    public void testConsumerHook() {
+        Map<String, Object> resultMap = userService.getMap();
+        Assert.assertTrue(resultMap.containsKey("hook key"));
+        Assert.assertTrue(resultMap.containsValue("this is pass by hook"));
+    }
+    
 }

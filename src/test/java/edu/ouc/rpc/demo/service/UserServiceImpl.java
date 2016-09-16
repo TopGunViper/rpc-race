@@ -3,8 +3,8 @@ package edu.ouc.rpc.demo.service;
 import java.util.HashMap;
 import java.util.Map;
 
-import edu.ouc.rpc.RpcException;
 import edu.ouc.rpc.context.RpcContext;
+import edu.ouc.rpc.model.RpcException;
 
 /**
  * 测试业务接口实现类
@@ -39,11 +39,20 @@ public class UserServiceImpl implements UserService {
 	}
 	
 	@Override
-	public void timeoutTest() {
+	public boolean timeoutTest() {
 		try {
 			//模拟长时间执行
 			Thread.sleep(10 * 1000);
 		} catch (InterruptedException e) {}
+		return true;
+	}
+
+	@Override
+	public Map<String, Object> getMap() {
+        Map<String,Object> newMap = new HashMap<String,Object>();
+        newMap.put("name","getMap");
+        newMap.putAll(RpcContext.getAttributes());
+        return newMap;
 	}
 
 }

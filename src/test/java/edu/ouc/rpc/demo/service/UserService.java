@@ -3,7 +3,7 @@ package edu.ouc.rpc.demo.service;
 import java.io.IOException;
 import java.util.Map;
 
-import edu.ouc.rpc.RpcException;
+import edu.ouc.rpc.model.RpcException;
 
 /**
  * 测试用业务接口
@@ -43,6 +43,11 @@ public interface UserService {
 	/**
 	 * 超时测试
 	 */
-	public void timeoutTest();
+	public boolean timeoutTest();
 	
+	/**
+	 * hook测试
+	 * @return
+	 */
+	public Map<String,Object> getMap();
 }
