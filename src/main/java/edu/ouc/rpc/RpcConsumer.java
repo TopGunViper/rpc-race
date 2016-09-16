@@ -16,6 +16,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import edu.ouc.rpc.aop.ConsumerHook;
 import edu.ouc.rpc.async.ResponseCallbackListener;
 import edu.ouc.rpc.async.ResponseFuture;
 import edu.ouc.rpc.context.RpcContext;
@@ -31,8 +32,11 @@ public final class RpcConsumer implements InvocationHandler{
 
 	private Class<?> interfaceClass;
 
-	private int timeout;
+	private int TIMEOUT;
 
+	//钩子
+	private ConsumerHook hook;
+	
 	private static int nThreads = Runtime.getRuntime().availableProcessors() * 2;
 
 	private static ExecutorService handlerPool = Executors.newFixedThreadPool(nThreads);
@@ -57,7 +61,11 @@ public final class RpcConsumer implements InvocationHandler{
 		return this;
 	}
 	public RpcConsumer timeout(int timeout){
-		this.timeout = timeout;
+		this.TIMEOUT = timeout;
+		return this;
+	}
+	public RpcConsumer hook(ConsumerHook hook){
+		this.hook = hook;
 		return this;
 	}
 	public Object newProxy(){
@@ -82,27 +90,20 @@ public final class RpcConsumer implements InvocationHandler{
 	public <T extends ResponseCallbackListener> void asynCall(final String methodName, T callbackListener) {
 		//记录异步方法调用
 		asyncMethods.get().add(methodName);
-
+		RpcRequest request = new RpcRequest(methodName,null,null,RpcContext.getAttributes());
+		
 		//构造并提交FutureTask异步任务
-		Future<RpcResponse> f = (Future<RpcResponse>) handlerPool.submit(new Callable<RpcResponse>(){
-			@Override
-			public RpcResponse call() throws Exception {
-				RpcRequest request = new RpcRequest(methodName,null,null,RpcContext.getAttributes());
-				Object response;
-				try{
-					response = doInvoke(request);
-				}catch(Exception e){
-					throw e;
-				}
-				return (RpcResponse) response;
-			}
-		});
+		Future<RpcResponse> f = null;
+		try {
+			f = doInvoke(request);
+		} catch (Exception e) {}
 
 		RpcResponse response;
+		
 		if(callbackListener != null){
 			try {
 				//阻塞
-				response = (RpcResponse) f.get(timeout,TimeUnit.MILLISECONDS);
+				response = (RpcResponse) f.get(TIMEOUT,TimeUnit.MILLISECONDS);
 				if(response.isError()){
 					//执行回调方法
 					callbackListener.onException(new RpcException(response.getErrorMsg()));
@@ -116,6 +117,7 @@ public final class RpcConsumer implements InvocationHandler{
 			//client端将从ResponseFuture中获取结果
 			ResponseFuture.setFuture(f);
 		}
+		hook.after(request);
 	}
 
 	public void cancelAsyn(String methodName) {
@@ -133,42 +135,55 @@ public final class RpcConsumer implements InvocationHandler{
 		Object retVal = null;
 
 		RpcRequest request = new RpcRequest(method.getName(), method.getParameterTypes(),args,RpcContext.getAttributes());
-		Object response;
+		RpcResponse rpcResp  = null;
 		try{
-			response = doInvoke(request);
-		}catch(Exception e){
+			Future<RpcResponse> response = doInvoke(request);
+			//获取异步结果
+			rpcResp  = (RpcResponse)response.get(TIMEOUT,TimeUnit.MILLISECONDS);
+		}catch(TimeoutException e){
 			throw e;
+		}catch(Exception e){}
+		
+		if(!rpcResp.isError()){
+			retVal = rpcResp.getResponseBody();
+		}else{
+			throw new RpcException(rpcResp.getErrorMsg());
 		}
-		if(response instanceof RpcResponse){
-			RpcResponse rpcResp  = (RpcResponse)response;
-			if(!rpcResp.isError()){
-				retVal = rpcResp.getResponseBody();
-			}else{
-				throw new RpcException(rpcResp.getErrorMsg());
-			}
-		}
+		hook.after(request);
 		return retVal;
 	}
-	private Object doInvoke(RpcRequest request) throws IOException, ClassNotFoundException{
-		//创建连接,获取输入输出流
-		Socket socket = new Socket(host,port);
-		Object retVal = null;
-		try{
-			ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-			try{
-				//发送
-				out.writeObject(request);
-				//接受server端的返回信息---阻塞
-				retVal = in.readObject();
-
-			}finally{
-				out.close();
-				in.close();
+	private Future<RpcResponse> doInvoke(final RpcRequest request) throws IOException, ClassNotFoundException{
+		//插入钩子
+		hook.before(request);
+		//构造并提交FutureTask异步任务
+		Future<RpcResponse> retVal = (Future<RpcResponse>) handlerPool.submit(new Callable<RpcResponse>(){
+			@Override
+			public RpcResponse call() throws Exception {
+				Object res = null;
+				try{
+					//创建连接,获取输入输出流
+					Socket socket = new Socket(host,port);
+					try{
+						ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+						ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+						try{
+							//发送
+							out.writeObject(request);
+							//接受server端的返回信息---阻塞
+							res = in.readObject();
+						}finally{
+							out.close();
+							in.close();
+						}
+					}finally{
+						socket.close();
+					}
+				}catch(Exception e){
+					throw e;
+				}
+				return (RpcResponse)res;
 			}
-		}finally{
-			socket.close();
-		}
+		});
 		return retVal;
 	}
 }
