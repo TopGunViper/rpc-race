@@ -14,6 +14,7 @@ import edu.ouc.rpc.demo.service.User;
 import edu.ouc.rpc.demo.service.UserConsumerHook;
 import edu.ouc.rpc.demo.service.UserService;
 import edu.ouc.rpc.demo.service.UserServiceListener;
+import edu.ouc.rpc.interceptor.TimeInterceptor;
 
 public class ClientTest {
 
@@ -28,11 +29,15 @@ public class ClientTest {
 	private static RpcConsumer consumer;
 	static {
 		consumer = new RpcConsumer();
+		
+		consumer.getInterceptorChain().addLast("time", new TimeInterceptor());
+		
 		userService = (UserService)consumer.targetHostPort(host, port)
 							.interfaceClass(UserService.class)
 							.timeout(TIMEOUT)
 							.hook(new UserConsumerHook())
 							.newProxy();
+		
 	}
 
 	/**
@@ -121,11 +126,22 @@ public class ClientTest {
             Assert.assertTrue(period < 3100);
         }
     }
+	@Ignore
     @Test
     public void testConsumerHook() {
         Map<String, Object> resultMap = userService.getMap();
         Assert.assertTrue(resultMap.containsKey("hook key"));
         Assert.assertTrue(resultMap.containsValue("this is pass by hook"));
+    }
+    @Test
+    public void testInterceptorChain(){
+    	userService.test();
+    	Assert.assertNotNull(RpcContext.getAttribute("time"));
+    	try{
+    	Map<String, Object> resultMap = userService.getMap();
+    	}catch(Exception e){
+    		Assert.assertEquals("method getMap is not allowed!", e.getMessage());
+    	}
     }
     
 }
