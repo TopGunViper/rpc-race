@@ -7,7 +7,9 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.Socket;
+import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -16,10 +18,16 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.commons.collections.CollectionUtils;
+
 import edu.ouc.rpc.aop.ConsumerHook;
 import edu.ouc.rpc.async.ResponseCallbackListener;
 import edu.ouc.rpc.async.ResponseFuture;
 import edu.ouc.rpc.context.RpcContext;
+import edu.ouc.rpc.interceptor.DefaultMethodInvocation;
+import edu.ouc.rpc.interceptor.Interceptor;
+import edu.ouc.rpc.interceptor.InterceptorChainFactory;
+import edu.ouc.rpc.interceptor.MethodInvocation;
 import edu.ouc.rpc.model.RpcException;
 import edu.ouc.rpc.model.RpcRequest;
 import edu.ouc.rpc.model.RpcResponse;
@@ -34,9 +42,11 @@ public final class RpcConsumer implements InvocationHandler{
 
 	private int TIMEOUT;
 
+	private InterceptorChainFactory interceptorChain = new InterceptorChainFactory();
+
 	//钩子
 	private ConsumerHook hook;
-	
+
 	private static int nThreads = Runtime.getRuntime().availableProcessors() * 2;
 
 	private static ExecutorService handlerPool = Executors.newFixedThreadPool(nThreads);
@@ -68,6 +78,9 @@ public final class RpcConsumer implements InvocationHandler{
 		this.hook = hook;
 		return this;
 	}
+	public InterceptorChainFactory getInterceptorChain(){
+		return interceptorChain;
+	}
 	public Object newProxy(){
 		return Proxy.newProxyInstance(RpcConsumer.class.getClassLoader(), new Class<?>[]{this.interfaceClass}, this);
 	}
@@ -91,7 +104,7 @@ public final class RpcConsumer implements InvocationHandler{
 		//记录异步方法调用
 		asyncMethods.get().add(methodName);
 		RpcRequest request = new RpcRequest(methodName,null,null,RpcContext.getAttributes());
-		
+
 		//构造并提交FutureTask异步任务
 		Future<RpcResponse> f = null;
 		try {
@@ -99,7 +112,7 @@ public final class RpcConsumer implements InvocationHandler{
 		} catch (Exception e) {}
 
 		RpcResponse response;
-		
+
 		if(callbackListener != null){
 			try {
 				//阻塞
@@ -133,8 +146,23 @@ public final class RpcConsumer implements InvocationHandler{
 		//如果是异步方法，立即返回null
 		if(asyncMethods.get().contains(method.getName())) return null;
 		Object retVal = null;
+		MethodInvocation methodInvocation;
 
+		List<Interceptor> chain = this.interceptorChain.getInterceptors();
 		RpcRequest request = new RpcRequest(method.getName(), method.getParameterTypes(),args,RpcContext.getAttributes());
+		
+		if(!CollectionUtils.isEmpty(chain)){
+			//执行拦截器链
+			methodInvocation = new DefaultMethodInvocation(this,request,chain);
+			retVal = methodInvocation.executeNext();
+		}else{
+			retVal = sendRequest(request);
+		}
+		return retVal;
+	}
+	public Object sendRequest(final RpcRequest request) throws TimeoutException{
+		Object retVal;
+
 		RpcResponse rpcResp  = null;
 		try{
 			Future<RpcResponse> response = doInvoke(request);
@@ -144,6 +172,7 @@ public final class RpcConsumer implements InvocationHandler{
 			throw e;
 		}catch(Exception e){}
 		
+		System.out.println("rpcResp.getErrorMsg():" + rpcResp.getErrorMsg());
 		if(!rpcResp.isError()){
 			retVal = rpcResp.getResponseBody();
 		}else{
