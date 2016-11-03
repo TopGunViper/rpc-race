@@ -9,14 +9,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.commons.collections.CollectionUtils;
 
-public class InterceptorChainFactory {
+public class InterceptorChain {
 	
 	private List<Entry> interceptors;
 	
 	private Set<String> registeredNames = Collections.newSetFromMap(
 			new ConcurrentHashMap<String,Boolean>());
 	
-	public InterceptorChainFactory(){
+	public InterceptorChain(){
 		interceptors = new CopyOnWriteArrayList<Entry>();
 	}
 	
