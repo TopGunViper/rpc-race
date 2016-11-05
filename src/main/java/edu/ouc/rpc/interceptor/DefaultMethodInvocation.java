@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 import edu.ouc.rpc.RpcConsumer;
+import edu.ouc.rpc.context.RpcContext;
 import edu.ouc.rpc.model.RpcRequest;
 
 /**
@@ -21,8 +22,6 @@ public class DefaultMethodInvocation implements RpcMethodInvocation {
 	
 	private boolean isRpcInvocation;
 	
-	private RpcRequest request;
-	
 	//拦截器
 	private List<Interceptor> interceptors;
 	
@@ -36,17 +35,13 @@ public class DefaultMethodInvocation implements RpcMethodInvocation {
 		this.parameters = parameters;
 		this.interceptors = interceptors;
 	}
-	public DefaultMethodInvocation(Object target,RpcRequest request, List<Interceptor> interceptors){
-		this.target = target;
-		this.interceptors = interceptors;
-		this.request = request;
-		this.isRpcInvocation = true;
-	}
 	
 	@Override
 	public Object executeNext() throws Exception {
 		if(this.currentIndex == this.interceptors.size() - 1){
 			if(this.isRpcInvocation){
+				RpcRequest request = new RpcRequest(target.getClass().getName(), method.getName(),method.getParameterTypes(),parameters
+						,RpcContext.getAttributes());
 				return ((RpcConsumer)target).sendRequest(request);
 			}else{
 				method.setAccessible(true);
