@@ -4,36 +4,77 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.commons.collections.CollectionUtils;
 
 public class InterceptorChain {
-	
+
 	private List<Entry> interceptors;
-	
-	private Set<String> registeredNames = new HashSet<String>();
-	
+
+	private Set<String> registeredNames;
+
 	public InterceptorChain(){
-		interceptors = new CopyOnWriteArrayList<Entry>();
+		interceptors = new ArrayList<Entry>();
+		registeredNames = new HashSet<String>();
+	}
+
+	public void addLast(String name, Interceptor interceptor){
+		synchronized(this){
+			checkDuplicateName(name);
+			Entry entry = new Entry(name,interceptor);
+			register(interceptors.size(), entry);
+		}
+	}
+	public void addFirst(String name, Interceptor interceptor){
+		synchronized(this){
+			checkDuplicateName(name);
+			Entry entry = new Entry(name,interceptor);
+			register(0, entry);
+		}
+	}
+
+	public void addBefore(String baseName, String name, Interceptor interceptor){
+		synchronized(this){
+			checkDuplicateName(name);
+			int index = getInterceptorIndex(baseName);
+			if(index == -1)
+				throw new NoSuchElementException(baseName);
+			Entry entry = new Entry(name,interceptor);
+			register(index, entry);
+		}
 	}
 	
-	public void addLast(String interceptorName, Interceptor interceptor){
-		register(interceptors.size(),new Entry(interceptorName,interceptor));
-	}
-	public void addFirst(String interceptorName, Interceptor interceptor){
-		register(0,new Entry(interceptorName,interceptor));
-	}
-	
-	private synchronized void register(int index, Entry entry){
-        if (registeredNames.contains(entry.name)) {
-            throw new IllegalArgumentException("Other interceptor is using the same name: " + entry.name);
-        }
-        interceptors.add(index, entry);
-        registeredNames.add(entry.name);
+	public void addAfter(String baseName, String name, Interceptor interceptor){
+		synchronized(this){
+			checkDuplicateName(name);
+			int index = getInterceptorIndex(baseName);
+			if(index == -1)
+				throw new NoSuchElementException(baseName);
+			Entry entry = new Entry(name,interceptor);
+			register(index+1, entry);
+		}
 	}
 	
+    private int getInterceptorIndex(String name) {
+    	List<Entry> interceptors = this.interceptors;
+    	for(int i = 0; i < interceptors.size(); i++){
+    		if(interceptors.get(i).name.equals(name)){
+    			return i;
+    		}
+    	}
+        return -1;
+    }
+	private void register(int index, Entry entry){
+		interceptors.add(index, entry);
+		registeredNames.add(entry.name);
+	}
+	private void checkDuplicateName(String name) {
+		if (registeredNames.contains(name)) {
+			throw new IllegalArgumentException("Duplicate interceptor name: " + name);
+		}
+	}
 	@SuppressWarnings("unchecked")
 	public List<Interceptor> getInterceptors() {
 		if(!CollectionUtils.isEmpty(this.interceptors)){
