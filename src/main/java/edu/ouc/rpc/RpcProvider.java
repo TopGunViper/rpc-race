@@ -3,7 +3,6 @@ package edu.ouc.rpc;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -16,7 +15,7 @@ import org.apache.commons.collections.CollectionUtils;
 import edu.ouc.rpc.context.RpcContext;
 import edu.ouc.rpc.interceptor.DefaultMethodInvocation;
 import edu.ouc.rpc.interceptor.Interceptor;
-import edu.ouc.rpc.interceptor.InterceptorChainFactory;
+import edu.ouc.rpc.interceptor.InterceptorChain;
 import edu.ouc.rpc.interceptor.MethodInvocation;
 import edu.ouc.rpc.model.RpcRequest;
 import edu.ouc.rpc.model.RpcResponse;
@@ -24,7 +23,7 @@ import edu.ouc.rpc.model.RpcResponse;
 public final class RpcProvider {
 
 
-	public final static InterceptorChainFactory interceptorChain = new InterceptorChainFactory();
+	public final static InterceptorChain interceptorChain = new InterceptorChain();
 
 	private static int nThreads = Runtime.getRuntime().availableProcessors() * 2;
 	private static ExecutorService handlerPool = Executors.newFixedThreadPool(nThreads);
@@ -75,7 +74,7 @@ public final class RpcProvider {
 						List<Interceptor> chain = interceptorChain.getInterceptors();
 						if(!CollectionUtils.isEmpty(chain)){
 							//执行拦截器链
-							methodInvocation = new DefaultMethodInvocation(service,null,method,rpcRequest.getArgs(),chain);
+							methodInvocation = new DefaultMethodInvocation(service,null,method,rpcRequest.getArgs(),chain, false);
 							retVal = methodInvocation.executeNext();
 						}else{
 							retVal = method.invoke(service, rpcRequest.getArgs());
@@ -94,7 +93,7 @@ public final class RpcProvider {
 			}catch(Exception e){}
 		}
 	}
-	public InterceptorChainFactory getInterceptorChain() {
+	public InterceptorChain getInterceptorChain() {
 		return interceptorChain;
 	}
 }

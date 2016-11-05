@@ -28,12 +28,13 @@ public class DefaultMethodInvocation implements RpcMethodInvocation {
 	//当前Interceptor索引值，范围：0-interceptors.size()-1
 	private int currentIndex = -1;
 	
-	public DefaultMethodInvocation(Object target,Object proxy,Method method,Object[] parameters, List<Interceptor> interceptors){
+	public DefaultMethodInvocation(Object target,Object proxy,Method method,Object[] parameters, List<Interceptor> interceptors, boolean isRpcInvocation){
 		this.target = target;
 		this.proxy = proxy;
 		this.method = method;
 		this.parameters = parameters;
 		this.interceptors = interceptors;
+		this.isRpcInvocation = isRpcInvocation;
 	}
 	
 	@Override
