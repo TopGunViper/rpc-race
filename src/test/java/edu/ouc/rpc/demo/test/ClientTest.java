@@ -18,26 +18,26 @@ import edu.ouc.rpc.interceptor.TimeInterceptor;
 
 public class ClientTest {
 
-	
+
 	private static String host = "127.0.0.1";
 	private static int port = 8888;
-	
+
 	private static UserService userService;
-	
+
 	private static int TIMEOUT = 3000;
-	
+
 	private static RpcConsumer consumer;
 	static {
 		consumer = new RpcConsumer();
-		
+
 		consumer.getInterceptorChain().addLast("time", new TimeInterceptor());
-		
+
 		userService = (UserService)consumer.targetHostPort(host, port)
-							.interfaceClass(UserService.class)
-							.timeout(TIMEOUT)
-							.hook(new UserConsumerHook())
-							.newProxy();
-		
+				.interfaceClass(UserService.class)
+				.timeout(TIMEOUT)
+				//.hook(new UserConsumerHook())
+				.newProxy();
+
 	}
 
 	/**
@@ -46,7 +46,6 @@ public class ClientTest {
 	@Ignore
 	@Test
 	public void test() {
-		System.out.println(userService.test());
 		Assert.assertEquals(userService.test(), "hello client, this is rpc server.");
 	}
 	/**
@@ -79,69 +78,69 @@ public class ClientTest {
 	@Ignore
 	@Test
 	public void testRpcContext(){
-        RpcContext.addAttribute("client","huhuhu");
-        Map<String, Object> res = userService.rpcContextTest();
-        Assert.assertEquals(res.get("server"),"hahaha");
-        Assert.assertEquals(res.get("client"),"huhuhu");
+		RpcContext.addAttribute("client","huhuhu");
+		Map<String, Object> res = userService.rpcContextTest();
+		Assert.assertEquals(res.get("server"),"hahaha");
+		Assert.assertEquals(res.get("client"),"huhuhu");
 	}
 	@Ignore
 	@Test
 	public void testAsyncCall(){
-        consumer.asynCall("test");
-        //立即返回
-        String nullValue = userService.test();
-        System.out.println(nullValue);
-        Assert.assertEquals(null, nullValue);
-        try {
-            String result = (String) ResponseFuture.getResponse(TIMEOUT);
-            Assert.assertEquals("hello client, this is rpc server.", result);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } finally {
-            consumer.cancelAsyn("test");
-        }
+		consumer.asynCall("test");
+		//立即返回
+		String nullValue = userService.test();
+		System.out.println(nullValue);
+		Assert.assertEquals(null, nullValue);
+		try {
+			String result = (String) ResponseFuture.getResponse(TIMEOUT);
+			Assert.assertEquals("hello client, this is rpc server.", result);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} finally {
+			consumer.cancelAsyn("test");
+		}
 	}
 	@Ignore
-    @Test
-    public void testCallback() {
-        UserServiceListener listener = new UserServiceListener();
-        consumer.asynCall("test", listener);
-        String nullStr = userService.test();
-        Assert.assertEquals(null, nullStr);
-        try {
-            String str = (String)listener.getResponse();
-            Assert.assertEquals("hello client, this is rpc server.", str);
-        } catch (InterruptedException e) {
-        }
-    }
+	@Test
+	public void testCallback() {
+		UserServiceListener listener = new UserServiceListener();
+		consumer.asynCall("test", listener);
+		String nullStr = userService.test();
+		Assert.assertEquals(null, nullStr);
+		try {
+			String str = (String)listener.getResponse();
+			Assert.assertEquals("hello client, this is rpc server.", str);
+		} catch (InterruptedException e) {
+		}
+	}
 	@Ignore
-    @Test
-    public void timeoutTest(){
-        long beginTime = System.currentTimeMillis();
-        try {
-            boolean result = userService.timeoutTest(); 
-        } catch (Exception e) {
-            long period = System.currentTimeMillis() - beginTime;
-            System.out.println("period:" + period);
-            Assert.assertTrue(period < 3100);
-        }
-    }
+	@Test
+	public void timeoutTest(){
+		long beginTime = System.currentTimeMillis();
+		try {
+			boolean result = userService.timeoutTest(); 
+		} catch (Exception e) {
+			long period = System.currentTimeMillis() - beginTime;
+			System.out.println("period:" + period);
+			Assert.assertTrue(period < 3100);
+		}
+	}
 	@Ignore
-    @Test
-    public void testConsumerHook() {
-        Map<String, Object> resultMap = userService.getMap();
-        Assert.assertTrue(resultMap.containsKey("hook key"));
-        Assert.assertTrue(resultMap.containsValue("this is pass by hook"));
-    }
-    @Test
-    public void testInterceptorChain(){
-    	userService.test();
-    	Assert.assertNotNull(RpcContext.getAttribute("time"));
-    	try{
-    	Map<String, Object> resultMap = userService.getMap();
-    	}catch(Exception e){
-    		Assert.assertEquals("method getMap is not allowed!", e.getMessage());
-    	}
-    }
-    
+	@Test
+	public void testConsumerHook() {
+		Map<String, Object> resultMap = userService.getMap();
+		Assert.assertTrue(resultMap.containsKey("hook key"));
+		Assert.assertTrue(resultMap.containsValue("this is pass by hook"));
+	}
+
+	@Test
+	public void testInterceptorChain(){
+		try{
+			Map<String, Object> resultMap = userService.getMap();
+		}catch(Exception e){
+			System.out.println(e);
+			Assert.assertEquals("method getMap is not allowed!", e.getMessage());
+		}
+	}
+
 }
